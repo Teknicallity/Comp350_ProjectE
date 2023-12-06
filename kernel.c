@@ -6,7 +6,10 @@ void printString(char[]);
 void printChar(char);
 void readString(char[]);
 void readSector(char*, int);
+void writeSector(char*, int);
 //void handleInterrupt21(int, int, int, int);
+void deleteCommand(char*);
+void writeFile(char*, char*, int);
 
 
 //interrupt(interNum, AX, BX, CX, DX)
@@ -14,6 +17,7 @@ void readSector(char*, int);
 int main() {
 
     makeInterrupt21();
+    interrupt(0x21, 8, "this is a test message", "testmg", 3);
     interrupt(0x21, 4, "shell", 0, 0);
     while(1);
 }
@@ -80,12 +84,28 @@ void readSector(char *buffer, int sector){
     interrupt(0x13, AX, BX, CX, DX);
 }
 
+void writeSector(char *buffer, int sector){
+    int AH = 3;         //write mode
+    int AL = 1;         //number of sectors to read (use 1)
+    char *BX = buffer;  //address where the data should be stored to (pass your char* array here)
+    int CH = 0;         //track number
+    int CL = sector + 1;//relative sector number (sector number plus one)
+    int DH = 0;         //head number
+    int DL = 0x80;      //device number (for the hard disk, use 0x80)
+
+    int AX = AH*256+AL;
+    int CX = CH*256+CL;
+    int DX = DH*256+DL;
+
+    interrupt(0x13, AX, BX, CX, DX);
+}
+
 void printDirectory(char *directory) {
     int i;
     int j;
     for (i=0; i<512; i+=32) {
         if (directory[i] != 0) {
-            printString("File: ");
+            //printString("File: ");
             for (j = 0; j < 6; j++) {
                 printChar(directory[i + j]);
             }
@@ -96,12 +116,11 @@ void printDirectory(char *directory) {
 }
 
 void readFile(char *fileName, char *buffer, int *sectorsRead ){
-
     char directory[512];
     int fileEntry = 0; //current entry position
     int match;
     int j;
-
+    
     readSector(directory, 2); //map at sector 1, directory at sector 2, kernel at sector 3
     //printDirectory(directory);
 
@@ -161,6 +180,108 @@ void executeProgram(char *programName){
     printString("launchProgram returned! error!\r\n"); //does not reach this
 }
 
+void deleteFile(char *filename){
+    char directory[512];
+    char map[512];
+    int dirIndex;
+    int j;
+    int match;
+    int fileNameStart = 4;
+
+    readSector(directory, 2);
+    readSector(map, 1);
+
+    for (dirIndex = 0; dirIndex < 512; dirIndex += 32) {
+        match = 1;
+        for (j = 0; j < 6; j++) {
+            if (filename[j + fileNameStart] != directory[dirIndex + j]) {
+                match = 0;
+                printChar('x');
+                break;
+            }
+        }
+
+        if (match) {
+            directory[dirIndex] = '\0'; 
+        // Set the first byte of the file name to '\0'
+
+            // Step through the sector numbers and update the Map
+            for (j = 6; j < 32; j++) {
+                int sector = directory[dirIndex + j];
+                if (sector != 0x0) {
+                    map[sector] = 0x0;
+                }
+            }
+            // Write back the updated Directory and Map
+            writeSector(directory, 2);
+            writeSector(map, 1);
+            return; // File found and deleted
+        }
+    }
+
+    //syscall(0, "File not found\r\n");
+    printChar('n');
+    printChar('o');
+    printChar('t');
+    printChar(' ');
+    printChar('f');
+    printChar('\r');
+    printChar('\n');
+}
+
+void writeFile(char* buffer, char* filename, int numberOfSectors) {
+    char directory[512];
+    char map[512];
+    char tempbuffer[512];
+    int i;
+    int j;
+    int k;
+    int dirindex;
+    int sectorcount;
+    int bufferindex=0;
+
+    readSector(directory, 2);
+    readSector(map, 1);
+
+    for (i=0; i < 512; i += 32) //find free entry in directory
+		if (directory[i]==0)
+			break;
+	if (i!=512) {
+        dirindex=i;
+	}
+    
+    for (i=0; i<32; i++) //fill field with \0
+		directory[dirindex + i]='\0';
+	//copy the name over
+	for (i=0; i<6; i++){
+		if(filename[i]==0)
+			break;
+		directory[dirindex + i]=filename[i];
+	}
+
+    sectorcount = 0;
+    for (j = 3; j < 256; j++) {//loop through map, start at entry 3
+        //printChar('t');
+        if (sectorcount >= numberOfSectors)
+            break;
+        if (map[j] == 0x00) {
+            map[j] = 0xFF;
+            sectorcount++;
+            directory[dirindex+6+sectorcount] = j; //set sector number in directory
+            
+            for (k = 0; k < 512; k++)
+                tempbuffer[k] = buffer[bufferindex+k];
+            bufferindex += 512;
+            writeSector(tempbuffer, j);
+        }
+    }
+    if (j>255)
+        return;
+    //printChar('g');
+    writeSector(directory,2);
+    writeSector(map,1);
+}
+
 void terminate(){
     char shellname[6];
     shellname[0]='s';
@@ -191,7 +312,17 @@ void handleInterrupt21(int ax, int bx, int cx, int dx){
     if (ax==5){
         terminate();
     }
-    if (ax > 5){
+    if (ax==6){
+        writeSector(bx, cx);
+    }
+    if (ax==7){
+        deleteFile(bx);
+    }
+    if (ax==8){
+        writeFile(bx, cx, dx);
+    }
+    if (ax > 8){
         printString("error");
+        printChar('x');
     }
 }
