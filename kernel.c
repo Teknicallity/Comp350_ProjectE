@@ -17,7 +17,7 @@ void writeFile(char*, char*, int);
 int main() {
 
     makeInterrupt21();
-    interrupt(0x21, 8, "this is a test message", "testmg", 3);
+    interrupt(0x21, 8, "this is a test message\n", "testmg", 3);
     interrupt(0x21, 4, "shell", 0, 0);
     while(1);
 }
@@ -129,7 +129,7 @@ void readFile(char *fileName, char *buffer, int *sectorsRead ){
 
         for (j=0; j<6; j++){ //loop through six characters of entry
             if (fileName[j] != directory[fileEntry + j]){ //filename char, entry offset plus current char
-
+                //printChar('u');
                 match = 0;
                 break;
             }
@@ -152,6 +152,7 @@ void readFile(char *fileName, char *buffer, int *sectorsRead ){
     }
     if(!match){
         *sectorsRead = 0;
+        printChar('3');
         printString("Error: File not found.\r\n");
     }
 }
@@ -267,7 +268,7 @@ void writeFile(char* buffer, char* filename, int numberOfSectors) {
         if (map[j] == 0x00) {
             map[j] = 0xFF;
             sectorcount++;
-            directory[dirindex+6+sectorcount] = j; //set sector number in directory
+            directory[dirindex+5+sectorcount] = j; //set sector number in directory
             
             for (k = 0; k < 512; k++)
                 tempbuffer[k] = buffer[bufferindex+k];

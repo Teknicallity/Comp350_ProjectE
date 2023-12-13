@@ -4,6 +4,7 @@ void typeCommand(char[]);
 void execCommand(char[]);
 void dirCommand();
 void prntChar(char);
+void copyCommand(char[]);
 
 int main(){
     char input[80];
@@ -24,6 +25,9 @@ int main(){
         }
         else if (input[0]=='d' && input[1]=='e' && input[2]=='l'){
             syscall(7, input);
+        }
+        else if (input[0]=='c' && input[1]=='o' && input[2]=='p' && input[3]=='y'){
+            copyCommand(input);
         }
         else if (input[0]=='t' && input[1]=='e' && input[2]=='s' && input[3]=='t'){
             prntChar('b');
@@ -54,15 +58,15 @@ void prntChar(char letter){
 void typeCommand(char command[]){
     char buffer[13312];
     int sectorsread = 0;
-    char filename[7];
+    char filename[6];
     int startname = 5;
     int i = 0;
     
     for(i=0; i<6; i++){
-        //filename[i] = '\0';
+        filename[i] = '\0';
         filename[i] = command[i+startname];    
     }
-    filename[6] = '\0';
+    //filename[6] = '\0';
 
     syscall(3, filename, buffer, &sectorsread);
     if (sectorsread==0){
@@ -114,4 +118,44 @@ void dirCommand(){
         }
     }
 }
+
+void copyCommand(char input[]){ //not filling directory or map
+    char filename1[6];
+    char filename2[6];
+    int i;
+    int j;
+    int k = 6;
+    char buffer[512];
+    int sectorsread = 0;
+
+    for (i=0; i<6; i++){
+        filename1[i] = '\0';
+        filename1[i] = input[i+5];
+        k++;
+    }
+    //filename1[i] = '\0';
+    syscall(3, filename1, buffer, &sectorsread); //DID NOT WORK IF LOWER DOWN
+    prntChar('-');
+    syscall(0, filename1);
+    prntChar('\n');
+    prntChar('\r');
+
+    for (j=0; input[j+k] != '\0'; j++){
+        filename2[j] = '\0';
+        filename2[j] = input[j+k];
+        //prntChar(input[j+k]);
+    }
+    
+    //filename2[j] = '\0';
+    syscall(8, buffer, filename2, sectorsread);
+    prntChar('-');
+    syscall(0, filename2);
+    prntChar('\n');
+    prntChar('\r');
+
+//    syscall(3, filename1, buffer, &sectorsread);
+//    syscall(8, buffer, filename2, sectorsread);
+}
+
+
 
