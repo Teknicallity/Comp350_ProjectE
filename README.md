@@ -1,4 +1,4 @@
-# Comp350_ProjectC
+# Comp350_ProjectD
 ### Joshua Sheputa
 All steps up to 5 completed. Copy working with one sector files.
 - use complileB.sh to compile
