@@ -11,6 +11,9 @@ void writeSector(char*, int);
 void deleteCommand(char*);
 void writeFile(char*, char*, int);
 
+//void makeTimerInterrupt();
+void handleTimerInterrupt(int, int);
+void returnFromTimer(int, int);
 
 //interrupt(interNum, AX, BX, CX, DX)
 
@@ -18,7 +21,9 @@ int main() {
 
     makeInterrupt21();
     interrupt(0x21, 8, "this is a test message\n", "testmg", 3);
+    makeTimerInterrupt();
     interrupt(0x21, 4, "shell", 0, 0);
+    
     while(1);
 }
 
@@ -327,3 +332,13 @@ void handleInterrupt21(int ax, int bx, int cx, int dx){
         printChar('x');
     }
 }
+
+void handleTimerInterrupt(int segment, int sp){
+    printChar('T');
+    printChar('i');
+    printChar('c');
+    returnFromTimer(segment, sp);
+}
+//void returnFromTimer(int segment, int sp){}
+
+
